@@ -1,0 +1,4 @@
+side,type,entry,stop_loss,take_profit,note
+LONG,AGGRESSIVE (momentum present),25330.25,25046.73,26039.06,
+SHORT,WATCH (wait for confirmation),24877.41,25160.93,24168.6,
+Enter only when price closes below trigger and MACD is not strongly bullish.
