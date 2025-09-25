@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import random, os
+import tensorflow as tf
 from sklearn.preprocessing import OneHotEncoder, RobustScaler
 from tensorflow.keras.layers import LSTM, Dropout, Dense, Input
 from tensorflow.keras.models import Model
@@ -9,19 +10,12 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# =====================================================
-# Seed setup
-# =====================================================
 SEED = 9
 os.environ['PYTHONHASHSEED'] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
-import tensorflow as tf
 tf.random.set_seed(SEED)
 
-# =====================================================
-# Paths
-# =====================================================
 OPEN_PATH = 'data/NIFTY_open.csv'
 CLOSE_PATH = 'data/NIFTY_close.csv'
 MODEL_FOLDER = 'models-NIFTY-240-1-LSTM'
@@ -30,35 +24,24 @@ RESULT_FOLDER = 'results-NIFTY-240-1-LSTM'
 for folder in [MODEL_FOLDER, RESULT_FOLDER]:
     os.makedirs(folder, exist_ok=True)
 
-# =====================================================
-# Load data
-# =====================================================
 df_open = pd.read_csv(OPEN_PATH, index_col=0)
 df_close = pd.read_csv(CLOSE_PATH, index_col=0)
 
-# Clean column names: strip spaces, remove dots, upper case
 df_open.columns = df_open.columns.str.strip().str.split('.').str[0].str.upper()
 df_close.columns = df_close.columns.str.strip().str.split('.').str[0].str.upper()
 
-# Convert all columns to numeric and fill NaNs
 df_open = df_open.apply(lambda x: pd.to_numeric(x, errors='coerce'))
 df_close = df_close.apply(lambda x: pd.to_numeric(x, errors='coerce'))
 
-# Fill missing values after conversion
 df_open.fillna(method='ffill', inplace=True)
 df_close.fillna(method='ffill', inplace=True)
 
-# Add date column
 df_open['DATE'] = df_open.index
 df_close['DATE'] = df_close.index
 
-# =====================================================
-# Label creation
-# =====================================================
 def create_label(df_open, df_close, perc=[0.5, 0.5]):
     perc = [0.] + list(np.cumsum(perc))
 
-    # Ensure only numeric columns are used
     numeric_cols = df_open.select_dtypes(include=np.number).columns
     returns = df_close[numeric_cols] / df_open[numeric_cols] - 1
 
@@ -70,9 +53,6 @@ def create_label(df_open, df_close, perc=[0.5, 0.5]):
 
 label = create_label(df_open, df_close)
 
-# =====================================================
-# Create stock-wise data
-# =====================================================
 def create_stock_data(df_open, df_close, st, m=240):
     st_data = pd.DataFrame()
     st_data['DATE'] = df_close['DATE']
@@ -97,18 +77,12 @@ def create_stock_data(df_open, df_close, st, m=240):
 
     return np.array(st_data), np.array(st_data)
 
-# =====================================================
-# Normalization
-# =====================================================
 def scalar_normalize(train_data, test_data):
     scaler = RobustScaler()
     scaler.fit(train_data[:, 2:-2].astype(np.float32))
     train_data[:, 2:-2] = scaler.transform(train_data[:, 2:-2].astype(np.float32))
     test_data[:, 2:-2] = scaler.transform(test_data[:, 2:-2].astype(np.float32))
 
-# =====================================================
-# LSTM Model
-# =====================================================
 def makeLSTM():
     inputs = Input(shape=(240, 1))
     x = LSTM(25, return_sequences=False)(inputs)
@@ -119,9 +93,6 @@ def makeLSTM():
     model.summary()
     return model
 
-# =====================================================
-# Training
-# =====================================================
 def trainer(train_data):
     np.random.shuffle(train_data)
     train_x, train_y = train_data[:, 2:-2], train_data[:, -1]
@@ -135,9 +106,6 @@ def trainer(train_data):
     model.fit(train_x, enc_y, epochs=10, validation_split=0.2, batch_size=512)
     return model
 
-# =====================================================
-# Prepare training data
-# =====================================================
 stock_names = [col for col in df_open.columns if col != 'DATE']
 valid_stocks = [st for st in stock_names if st in df_close.columns and st in label.columns]
 
@@ -156,9 +124,6 @@ train_data = np.concatenate([x for x in train_data])
 test_data = np.concatenate([x for x in test_data])
 scalar_normalize(train_data, test_data)
 
-# =====================================================
-# Train model
-# =====================================================
 model = trainer(train_data)
 model.save(os.path.join(MODEL_FOLDER, "final_lstm_nifty.h5"))
-print("✅ Training complete and model saved.")
+print("Training complete and model saved.")

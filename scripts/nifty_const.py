@@ -1,9 +1,7 @@
-# scripts/download_nifty_ohlc.py
 import yfinance as yf
 import pandas as pd
 import os
 
-# NIFTY 50 symbols with NSE suffix
 nifty50 = [
     "RELIANCE.NS", "TCS.NS", "HDFC.NS", "ICICIBANK.NS", "HINDUNILVR.NS",
     "KOTAKBANK.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS", "LT.NS",
@@ -17,18 +15,15 @@ nifty50 = [
     "ICICIGI.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS"
 ]
 
-# Download historical data
-print("📥 Downloading historical OHLC data for NIFTY 50...")
-data = yf.download(nifty50, start="1993-01-01", end="2025-01-01")  # daily OHLC
+print("Downloading historical OHLC data for NIFTY 50...")
+data = yf.download(nifty50, start="1993-01-01", end="2025-09-01")
 
-# Create data folder
 os.makedirs("data", exist_ok=True)
 
-# Save Open and Close separately
 df_open = data['Open']
 df_close = data['Close']
 
 df_open.to_csv("data/NIFTY_open.csv")
 df_close.to_csv("data/NIFTY_close.csv")
 
-print("✅ NIFTY_open.csv and NIFTY_close.csv created in data/ folder.")
+print("NIFTY_open.csv and NIFTY_close.csv created in data/ folder.")

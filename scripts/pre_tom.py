@@ -1,4 +1,3 @@
-# scripts/fetch_and_predict_nifty50_tomorrow.py
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -6,9 +5,6 @@ from sklearn.preprocessing import RobustScaler
 from tensorflow.keras.models import load_model
 import os
 
-# ===============================
-# NIFTY 50 stocks
-# ===============================
 STOCKS = [
     "ADANIPORTS.NS", "ASIANPAINT.NS", "AXISBANK.NS", "BAJAJ-AUTO.NS",
     "BAJFINANCE.NS", "BAJAJFINSV.NS", "BPCL.NS", "BHARTIARTL.NS",
@@ -24,33 +20,26 @@ STOCKS = [
     "WIPRO.NS"
 ]
 
+STOCKS.remove("HDFC.NS") 
+
 MODEL_PATH = "models-NIFTY-240-1-LSTM/final_lstm_nifty.h5"
 DATA_DIR = "data/stock_data_2025"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# ===============================
-# Load LSTM model
-# ===============================
 model = load_model(MODEL_PATH)
 
-# ===============================
-# Fetch and save stock data
-# ===============================
 def fetch_and_save(stock):
     print(f"Fetching {stock}...")
-    df = yf.download(stock, start="2023-09-17", end="2025-09-18", interval="1d")
+    df = yf.download(stock, start="2023-09-17", end="2025-09-26", interval="1d", auto_adjust=True)
     if df.empty:
-        print(f"⚠️ No data for {stock}")
+        print(f"No data for {stock}")
         return None
     df.to_csv(f"{DATA_DIR}/{stock.replace('.NS','')}_data.csv")
     return df
 
-# ===============================
-# Predict tomorrow
-# ===============================
 def predict_stock(df, stock):
     if len(df) < 240:
-        print(f"⚠️ Not enough data for {stock}")
+        print(f"Not enough data for {stock}")
         return None
 
     df['Return'] = df['Close'].pct_change()
@@ -68,9 +57,6 @@ def predict_stock(df, stock):
     movement = "Up" if predicted_class == 1 else "Down"
     return movement
 
-# ===============================
-# Main
-# ===============================
 results = []
 
 for stock in STOCKS:
@@ -79,15 +65,16 @@ for stock in STOCKS:
         if df is not None:
             movement = predict_stock(df, stock)
             if movement:
-                results.append({'Stock': stock, 'Predicted': movement})
+                prediction_date = (df.index[-1] + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+                results.append({'Date': prediction_date, 'Stock': stock, 'Predicted': movement})
     except Exception as e:
-        print(f"❌ Error with {stock}: {e}")
+        print(f"Error with {stock}: {e}")
 
-# Save predictions
 if results:
     result_df = pd.DataFrame(results)
+    result_df = result_df[['Date', 'Stock', 'Predicted']]
     result_df.to_csv("results-NIFTY-240-1-LSTM/predictions_tomorrow.csv", index=False)
-    print("✅ Predictions saved for all stocks:")
+    print("Predictions saved for all stocks:")
     print(result_df)
 else:
-    print("⚠️ No valid predictions made!")
+    print("No valid predictions made!")
